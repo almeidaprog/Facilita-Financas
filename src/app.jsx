@@ -14,30 +14,38 @@ function App() {
       <section className="cards">
         <div className="card saldo">
           <span>Saldo Total</span>
+
           <strong>
-            R$ {saldoTotal.toLocaleString("pt-BR", {
+            R${" "}
+            {saldoTotal.toLocaleString("pt-BR", {
               minimumFractionDigits: 2,
             })}
           </strong>
         </div>
 
-        <div className="card receita">
+        <div className="card">
           <span>Receitas</span>
+
           <strong>
-            R$ {receitas.toLocaleString("pt-BR", {
+            R${" "}
+            {receitas.toLocaleString("pt-BR", {
               minimumFractionDigits: 2,
             })}
           </strong>
+
           <small>Este mês</small>
         </div>
 
-        <div className="card despesa">
+        <div className="card">
           <span>Despesas</span>
+
           <strong>
-            R$ {despesas.toLocaleString("pt-BR", {
+            R${" "}
+            {despesas.toLocaleString("pt-BR", {
               minimumFractionDigits: 2,
             })}
           </strong>
+
           <small>Este mês</small>
         </div>
       </section>
