@@ -17,11 +17,6 @@ class Transaction(Base):
         nullable=False,
     )
 
-    account_id: Mapped[int] = mapped_column(
-        ForeignKey("accounts.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"),
         nullable=True,

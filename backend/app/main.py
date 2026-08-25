@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.database import engine
+from app.routes.users import router as users_router
 
 
 app = FastAPI(
@@ -46,3 +47,6 @@ def database_check():
     return {
         "database": "PostgreSQL conectado"
     }
+
+
+app.include_router(users_router)
