@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse
-from app.security import hash_password
+from app.schemas.user import UserCreate, UserResponse, UserLogin
+from app.security import hash_password, verify_password
 
 router = APIRouter(
     prefix="/users",
@@ -39,3 +39,22 @@ def create_user(
         )
 
     return user
+
+
+@router.post("/login")
+def login(data: UserLogin, db: Session = Depends(get_db)):
+    #Procura no banco o usuário que possui o e-mail informado.
+    user = db.query(User).filter(User.email == data.email).first()
+
+    #Se o usuário não for encontrado, então dá erro no login
+    if user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Email ou Senha incorreto"
+        )
+    #Verifica se a senha informada corresponde ao hash salvo no banco.
+    if not verify_password(data.password, user.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Email ou senha incorreto"
+        )
