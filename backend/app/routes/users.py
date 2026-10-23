@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, UserLogin
+from app.schemas.user import UserCreate, UserLogin, UserResponse
 from app.security import hash_password, verify_password
+
 
 router = APIRouter(
     prefix="/users",
@@ -23,38 +24,39 @@ def create_user(
         email=data.email,
         password_hash=hash_password(data.password),
     )
-
     db.add(user)
 
     try:
         db.commit()
         db.refresh(user)
-
     except IntegrityError:
         db.rollback()
-
         raise HTTPException(
             status_code=400,
-            detail="Já existe um usuário com este e-mail."
+            detail="Já existe um usuário com este e-mail.",
         )
 
     return user
 
 
 @router.post("/login")
-def login(data: UserLogin, db: Session = Depends(get_db)):
-    #Procura no banco o usuário que possui o e-mail informado.
+def login(
+    data: UserLogin,
+    db: Session = Depends(get_db),
+):
     user = db.query(User).filter(User.email == data.email).first()
 
-    #Se o usuário não for encontrado, então dá erro no login
-    if user is None:
+    if user is None or not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=401,
-            detail="Email ou Senha incorreto"
+            detail="Email ou senha incorretos.",
         )
-    #Verifica se a senha informada corresponde ao hash salvo no banco.
-    if not verify_password(data.password, user.password_hash):
-        raise HTTPException(
-            status_code=401,
-            detail="Email ou senha incorreto"
-        )
+
+    return {
+        "message": "Login realizado com sucesso.",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+        },
+    }

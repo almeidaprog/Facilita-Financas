@@ -5,3 +5,5 @@ psycopg[binary]
 pydantic
 python-dotenv
 alembic
+email-validator
+passlib[bcrypt]

@@ -1,16 +1,46 @@
-# React + Vite
+# Facilita Finanças
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Protótipo de controle financeiro pessoal com React, FastAPI e PostgreSQL.
 
-Currently, two official plugins are available:
+## Estrutura principal
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `users`: usuários do sistema
+- `financial_profiles`: renda mensal atual de cada usuário
+- `categories`: categorias de receitas e despesas
+- `entries`: lançamentos financeiros (`income` ou `expense`)
 
-## React Compiler
+## Backend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+cd backend
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
 
-## Expanding the ESLint configuration
+Crie `backend/.env` a partir de `.env.example` e configure sua conexão PostgreSQL.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Depois aplique as migrations:
+
+```powershell
+alembic upgrade head
+```
+
+Inicie a API:
+
+```powershell
+uvicorn app.main:app --reload
+```
+
+Swagger:
+
+`http://127.0.0.1:8000/docs`
+
+## Frontend
+
+Na raiz do projeto:
+
+```powershell
+npm install
+npm run dev
+```

@@ -13,7 +13,11 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL não encontrada no arquivo .env")
 
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 5},
+)
 
 SessionLocal = sessionmaker(
     bind=engine,
@@ -28,7 +32,6 @@ class Base(DeclarativeBase):
 
 def get_db():
     db = SessionLocal()
-
     try:
         yield db
     finally:

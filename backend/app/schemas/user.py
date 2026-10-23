@@ -1,20 +1,19 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
-# Dados recebidos pela API durante o cadastro de um usuário.
 class UserCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    password: str
+    password: str = Field(min_length=6, max_length=72)
 
-# Dados recebidos pela API para o Login de um usuário já criado.
+
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=1, max_length=72)
 
-# Dados retornados pela API.
+
 class UserResponse(BaseModel):
     id: int
     name: str
