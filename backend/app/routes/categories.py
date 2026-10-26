@@ -48,7 +48,7 @@ def create_category(
 @router.get("/{user_id}", response_model=list[CategoryResponse])
 def list_categories(
     user_id: int,
-    category_type: str | None = Query(default=None, pattern="^(income|expense)$"),
+    category_type: str | None = Query(default=None, pattern="^(despesa|receita)$"),
     db: Session = Depends(get_db),
 ):
     query = db.query(Category).filter(Category.user_id == user_id)

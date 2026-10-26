@@ -10,7 +10,7 @@ class EntryCreate(BaseModel):
     category_id: int | None = None
     description: str | None = Field(default=None, max_length=255)
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    entry_type: Literal["income", "expense"]
+    entry_type: Literal["despesa", "receita"]
     entry_date: date
     notes: str | None = None
 
@@ -19,7 +19,7 @@ class EntryUpdate(BaseModel):
     category_id: int | None = None
     description: str | None = Field(default=None, max_length=255)
     amount: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=2)
-    entry_type: Literal["income", "expense"] | None = None
+    entry_type: Literal["despesa", "receita"] | None = None
     entry_date: date | None = None
     notes: str | None = None
 
