@@ -1,5 +1,6 @@
 import Icon from "../components/Icon";
 import { formatCurrency, formatDate, normalizeType } from "../utils/formatters";
+import { calculateDashboard } from "../utils/finance";
 
 function SummaryCard({ label, value, icon, tone, helper }) {
   return (
@@ -15,33 +16,11 @@ function SummaryCard({ label, value, icon, tone, helper }) {
 }
 
 export default function Dashboard({ user, profile, entries, categories, loading, onNewEntry, onNavigate }) {
-  const now = new Date();
-  const monthEntries = entries.filter((entry) => {
-    const [year, month] = entry.entry_date.split("-").map(Number);
-    return year === now.getFullYear() && month === now.getMonth() + 1;
+  const { monthlyIncome, extraIncome, expenses, balance, topExpenses, recentEntries } = calculateDashboard({
+    entries,
+    categories,
+    profile,
   });
-
-  const extraIncome = monthEntries
-    .filter((entry) => normalizeType(entry.entry_type) === "receita")
-    .reduce((sum, entry) => sum + Number(entry.amount), 0);
-
-  const expenses = monthEntries
-    .filter((entry) => normalizeType(entry.entry_type) === "despesa")
-    .reduce((sum, entry) => sum + Number(entry.amount), 0);
-
-  const monthlyIncome = Number(profile?.monthly_income || 0);
-  const balance = monthlyIncome + extraIncome - expenses;
-  const recent = entries.slice(0, 5);
-
-  const expenseByCategory = monthEntries
-    .filter((entry) => normalizeType(entry.entry_type) === "despesa")
-    .reduce((acc, entry) => {
-      const category = categories.find((item) => item.id === entry.category_id)?.name || "Sem categoria";
-      acc[category] = (acc[category] || 0) + Number(entry.amount);
-      return acc;
-    }, {});
-
-  const topExpenses = Object.entries(expenseByCategory).sort((a, b) => b[1] - a[1]).slice(0, 4);
   const maxExpense = topExpenses[0]?.[1] || 1;
 
   if (loading) {
@@ -80,17 +59,17 @@ export default function Dashboard({ user, profile, entries, categories, loading,
             <button className="text-button" onClick={() => onNavigate("entries")}>Ver todos</button>
           </div>
 
-          {recent.length === 0 ? (
+          {recentEntries.length === 0 ? (
             <div className="empty-state compact"><strong>Nenhum lançamento ainda</strong><span>Quando você registrar uma entrada ou despesa, ela aparece aqui.</span><button onClick={onNewEntry}>Adicionar primeiro lançamento</button></div>
           ) : (
-            <div className="transaction-list">
-              {recent.map((entry) => {
+            <div className="entry-list">
+              {recentEntries.map((entry) => {
                 const isIncome = normalizeType(entry.entry_type) === "receita";
                 return (
-                  <div className="transaction-row" key={entry.id}>
-                    <div className={`transaction-mark ${isIncome ? "income" : "expense"}`}><Icon name={isIncome ? "up" : "down"} size={17} /></div>
-                    <div className="transaction-main"><strong>{entry.description}</strong><span>{categories.find((category) => category.id === entry.category_id)?.name || "Sem categoria"} • {formatDate(entry.entry_date)}</span></div>
-                    <div className={`transaction-amount ${isIncome ? "positive" : "negative"}`}>{isIncome ? "+ " : "− "}{formatCurrency(entry.amount)}</div>
+                  <div className="entry-row" key={entry.id}>
+                    <div className={`entry-mark ${isIncome ? "income" : "expense"}`}><Icon name={isIncome ? "up" : "down"} size={17} /></div>
+                    <div className="entry-main"><strong>{entry.description}</strong><span>{categories.find((category) => category.id === entry.category_id)?.name || "Sem categoria"} • {formatDate(entry.entry_date)}</span></div>
+                    <div className={`entry-amount ${isIncome ? "positive" : "negative"}`}>{isIncome ? "+ " : "− "}{formatCurrency(entry.amount)}</div>
                   </div>
                 );
               })}

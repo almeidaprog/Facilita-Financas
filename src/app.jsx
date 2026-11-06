@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import EntriesPage from "./pages/EntriesPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import ProfilePage from "./pages/ProfilePage";
+import Onboarding from "./pages/Onboarding";
 import { getCategories, getEntries, getFinancialProfile } from "./services/api";
 
 function readStoredUser() {
@@ -32,6 +33,7 @@ export default function App() {
   const [loadError, setLoadError] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openEntryOnLoad, setOpenEntryOnLoad] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!user) return;
@@ -50,6 +52,7 @@ export default function App() {
       setEntries(entriesData || []);
       setCategories(categoriesData || []);
       setProfile(profileResult);
+      setDataReady(true);
     } catch (error) {
       setLoadError(error.message);
     } finally {
@@ -63,6 +66,7 @@ export default function App() {
 
   function handleLogin(loggedUser) {
     localStorage.setItem("facilita_user", JSON.stringify(loggedUser));
+    setDataReady(false);
     setUser(loggedUser);
     setCurrentView("dashboard");
   }
@@ -75,6 +79,7 @@ export default function App() {
     setEntries([]);
     setCategories([]);
     setCurrentView("dashboard");
+    setDataReady(false);
   }
 
   function handleNewEntry() {
@@ -92,6 +97,29 @@ export default function App() {
       return <Register onRegistered={(email) => { setRegisteredEmail(email); setAuthScreen("login"); }} onGoLogin={() => setAuthScreen("login")} />;
     }
     return <Login initialEmail={registeredEmail} onLogin={handleLogin} onGoRegister={() => setAuthScreen("register")} />;
+  }
+
+  if (!dataReady) {
+    return (
+      <div className="app-boot">
+        {loadError ? (
+          <>
+            <strong>Não foi possível carregar seus dados.</strong>
+            <span>{loadError}</span>
+            <button className="primary-button" onClick={loadData}>Tentar novamente</button>
+          </>
+        ) : (
+          <>
+            <div className="spinner" />
+            <span>Preparando suas finanças...</span>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return <Onboarding user={user} categories={categories} onComplete={loadData} onLogout={handleLogout} />;
   }
 
   let page;

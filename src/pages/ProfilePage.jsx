@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import StatusMessage from "../components/StatusMessage";
 import { createFinancialProfile, updateFinancialProfile } from "../services/api";
 import { formatCurrency } from "../utils/formatters";
@@ -9,17 +9,24 @@ export default function ProfilePage({ user, profile, onRefresh }) {
   const [success, setSuccess] = useState("");
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => setIncome(profile?.monthly_income ?? ""), [profile]);
-
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setSuccess("");
-    if (Number(income) < 0 || income === "") return setError("Informe uma renda mensal válida.");
+
+    const value = Number(income);
+    if (!Number.isFinite(value) || value < 0 || income === "") {
+      setError("Informe uma renda mensal válida.");
+      return;
+    }
+
     setSaving(true);
     try {
-      if (profile) await updateFinancialProfile(user.id, { monthly_income: Number(income) });
-      else await createFinancialProfile({ user_id: user.id, monthly_income: Number(income) });
+      const savedProfile = profile
+        ? await updateFinancialProfile(user.id, { monthly_income: value })
+        : await createFinancialProfile({ user_id: user.id, monthly_income: value });
+
+      setIncome(savedProfile?.monthly_income ?? value);
       await onRefresh();
       setSuccess("Renda mensal atualizada com sucesso.");
     } catch (err) {
@@ -31,16 +38,50 @@ export default function ProfilePage({ user, profile, onRefresh }) {
 
   return (
     <div className="page-stack narrow-page">
-      <section className="page-heading"><div><span className="eyebrow">Seu ponto de partida</span><h1>Minha renda</h1><p>Informe quanto você recebe normalmente por mês. Você pode mudar este valor quando sua realidade mudar.</p></div></section>
+      <section className="page-heading">
+        <div>
+          <span className="eyebrow">Seu ponto de partida</span>
+          <h1>Minha renda</h1>
+          <p>Informe quanto você recebe normalmente por mês. Você pode mudar este valor quando sua realidade mudar.</p>
+        </div>
+      </section>
+
       <section className="panel profile-panel">
-        <div className="profile-value"><span>Renda mensal atual</span><strong>{profile ? formatCurrency(profile.monthly_income) : "Ainda não informada"}</strong><small>Este valor compõe o cálculo do saldo estimado no Dashboard.</small></div>
+        <div className="profile-value">
+          <span>Renda mensal atual</span>
+          <strong>{profile ? formatCurrency(profile.monthly_income) : "Ainda não informada"}</strong>
+          <small>Este valor compõe o cálculo do saldo estimado no Dashboard.</small>
+        </div>
+
         <form className="income-form" onSubmit={handleSubmit}>
-          <StatusMessage>{error}</StatusMessage><StatusMessage type="success">{success}</StatusMessage>
-          <label>Nova renda mensal<div className="money-input"><span>R$</span><input type="number" min="0" step="0.01" value={income} onChange={(event) => setIncome(event.target.value)} placeholder="0,00" required /></div></label>
-          <button className="primary-button" disabled={saving}>{saving ? "Salvando..." : profile ? "Atualizar renda" : "Cadastrar renda"}</button>
+          <StatusMessage>{error}</StatusMessage>
+          <StatusMessage type="success">{success}</StatusMessage>
+          <label>
+            Nova renda mensal
+            <div className="money-input">
+              <span>R$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                inputMode="decimal"
+                value={income}
+                onChange={(event) => setIncome(event.target.value)}
+                placeholder="0,00"
+                required
+              />
+            </div>
+          </label>
+          <button className="primary-button" disabled={saving}>
+            {saving ? "Salvando..." : profile ? "Atualizar renda" : "Cadastrar renda"}
+          </button>
         </form>
       </section>
-      <section className="info-card"><strong>Por que a renda fica separada dos lançamentos?</strong><p>Ela representa seu valor mensal recorrente. Entradas extras, como freelance ou venda de algo, entram como lançamentos de receita.</p></section>
+
+      <section className="info-card">
+        <strong>Por que a renda fica separada dos lançamentos?</strong>
+        <p>Ela representa seu valor mensal recorrente. Entradas extras, como freelance ou venda de algo, entram como lançamentos de receita.</p>
+      </section>
     </div>
   );
 }

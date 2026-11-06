@@ -2,31 +2,58 @@ import { useMemo, useState } from "react";
 import Icon from "../components/Icon";
 import Modal from "../components/Modal";
 import StatusMessage from "../components/StatusMessage";
-import { createEntry, deleteEntry, updateEntry } from "../services/api";
+import { createCategory, createEntry, deleteEntry, updateEntry } from "../services/api";
 import { formatCurrency, formatDate, normalizeType, todayInputValue, typeLabel } from "../utils/formatters";
+import { sortEntries } from "../utils/finance";
 
-const emptyForm = { entry_type: "despesa", description: "", amount: "", category_id: "", entry_date: todayInputValue(), notes: "" };
+const makeEmptyForm = () => ({
+  entry_type: "despesa",
+  description: "",
+  amount: "",
+  category_id: "",
+  entry_date: todayInputValue(),
+  notes: "",
+});
 
 export default function EntriesPage({ user, entries, categories, onRefresh, openCreateOnMount = false }) {
   const [filter, setFilter] = useState("todos");
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(openCreateOnMount);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(makeEmptyForm);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [newCategoryOpen, setNewCategoryOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [categoryError, setCategoryError] = useState("");
+  const [categorySaving, setCategorySaving] = useState(false);
 
-  const visibleEntries = useMemo(() => entries.filter((entry) => {
-    const typeMatch = filter === "todos" || normalizeType(entry.entry_type) === filter;
-    const query = search.trim().toLowerCase();
-    const textMatch = !query || entry.description.toLowerCase().includes(query) || (entry.notes || "").toLowerCase().includes(query);
-    return typeMatch && textMatch;
-  }), [entries, filter, search]);
+  const visibleEntries = useMemo(() => {
+    const filtered = entries.filter((entry) => {
+      const typeMatch = filter === "todos" || normalizeType(entry.entry_type) === filter;
+      const query = search.trim().toLowerCase();
+      const categoryName = categories.find((category) => Number(category.id) === Number(entry.category_id))?.name || "";
+      const searchableText = [entry.description, entry.notes, categoryName, typeLabel(entry.entry_type), entry.entry_date]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return typeMatch && (!query || searchableText.includes(query));
+    });
+
+    return sortEntries(filtered);
+  }, [entries, categories, filter, search]);
+
+  function resetInlineCategory() {
+    setNewCategoryOpen(false);
+    setNewCategoryName("");
+    setCategoryError("");
+  }
 
   function openCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm(makeEmptyForm());
     setError("");
+    resetInlineCategory();
     setModalOpen(true);
   }
 
@@ -41,15 +68,60 @@ export default function EntriesPage({ user, entries, categories, onRefresh, open
       notes: entry.notes || "",
     });
     setError("");
+    resetInlineCategory();
     setModalOpen(true);
   }
 
   const availableCategories = categories.filter((category) => normalizeType(category.category_type) === form.entry_type);
 
   function update(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+      ...(field === "entry_type" ? { category_id: "" } : {}),
+    }));
+
     if (field === "entry_type") {
-      setForm((current) => ({ ...current, entry_type: value, category_id: "" }));
+      resetInlineCategory();
+    }
+  }
+
+  function handleCategoryChange(value) {
+    if (value === "__new__") {
+      setForm((current) => ({ ...current, category_id: "" }));
+      setNewCategoryOpen(true);
+      setCategoryError("");
+      return;
+    }
+
+    setForm((current) => ({ ...current, category_id: value }));
+    resetInlineCategory();
+  }
+
+  async function handleCreateInlineCategory() {
+    const name = newCategoryName.trim();
+    setCategoryError("");
+
+    if (!name) {
+      setCategoryError("Informe um nome para a categoria.");
+      return;
+    }
+
+    setCategorySaving(true);
+    try {
+      const created = await createCategory({
+        user_id: user.id,
+        name,
+        category_type: form.entry_type,
+      });
+
+      await onRefresh();
+      setForm((current) => ({ ...current, category_id: String(created.id) }));
+      resetInlineCategory();
+    } catch (err) {
+      setCategoryError(err.message);
+    } finally {
+      setCategorySaving(false);
     }
   }
 
@@ -112,7 +184,7 @@ export default function EntriesPage({ user, entries, categories, onRefresh, open
       <section className="panel">
         <div className="toolbar">
           <div className="segmented-control">
-            {[['todos','Todos'], ['receita','Receitas'], ['despesa','Despesas']].map(([value, label]) => (
+            {[["todos","Todos"], ["receita","Receitas"], ["despesa","Despesas"]].map(([value, label]) => (
               <button key={value} className={filter === value ? "active" : ""} onClick={() => setFilter(value)}>{label}</button>
             ))}
           </div>
@@ -131,7 +203,7 @@ export default function EntriesPage({ user, entries, categories, onRefresh, open
                   return (
                     <tr key={entry.id}>
                       <td><strong>{entry.description}</strong>{entry.notes && <span className="table-note">{entry.notes}</span>}</td>
-                      <td>{categories.find((category) => category.id === entry.category_id)?.name || "Sem categoria"}</td>
+                      <td>{categories.find((category) => Number(category.id) === Number(entry.category_id))?.name || "Sem categoria"}</td>
                       <td>{formatDate(entry.entry_date)}</td>
                       <td><span className={`type-badge ${isIncome ? "income" : "expense"}`}>{typeLabel(entry.entry_type)}</span></td>
                       <td className={`amount-cell ${isIncome ? "positive" : "negative"}`}>{isIncome ? "+ " : "− "}{formatCurrency(entry.amount)}</td>
@@ -155,9 +227,39 @@ export default function EntriesPage({ user, entries, categories, onRefresh, open
             </div>
             <label>Descrição<input value={form.description} onChange={(event) => update("description", event.target.value)} placeholder="Ex.: Mercado, aluguel, freelance..." autoFocus required /></label>
             <div className="form-grid two"><label>Valor (R$)<input type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => update("amount", event.target.value)} placeholder="0,00" required /></label><label>Data<input type="date" value={form.entry_date} onChange={(event) => update("entry_date", event.target.value)} required /></label></div>
-            <label>Categoria<select value={form.category_id} onChange={(event) => update("category_id", event.target.value)}><option value="">Sem categoria</option>{availableCategories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}</select>{availableCategories.length === 0 && <small>Nenhuma categoria de {form.entry_type} cadastrada. O lançamento pode ficar sem categoria.</small>}</label>
+            <label>
+              Categoria
+              <select value={form.category_id} onChange={(event) => handleCategoryChange(event.target.value)}>
+                <option value="">Sem categoria</option>
+                {availableCategories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+                <option value="__new__">＋ Criar nova categoria</option>
+              </select>
+            </label>
+
+            {newCategoryOpen && (
+              <div className="inline-category-create">
+                <div>
+                  <strong>Nova categoria de {form.entry_type}</strong>
+                  <span>Ela será criada e selecionada neste lançamento.</span>
+                </div>
+                {categoryError && <StatusMessage>{categoryError}</StatusMessage>}
+                <div className="inline-category-row">
+                  <input
+                    value={newCategoryName}
+                    onChange={(event) => { setNewCategoryName(event.target.value); setCategoryError(""); }}
+                    placeholder={form.entry_type === "despesa" ? "Ex.: Academia" : "Ex.: Comissão"}
+                    maxLength={100}
+                    autoFocus
+                  />
+                  <button type="button" className="secondary-button" onClick={handleCreateInlineCategory} disabled={categorySaving}>
+                    {categorySaving ? "Criando..." : "Criar e usar"}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <label>Observação <span className="optional">opcional</span><textarea rows="3" value={form.notes} onChange={(event) => update("notes", event.target.value)} placeholder="Algum detalhe que ajude você a lembrar deste lançamento." /></label>
-            <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setModalOpen(false)}>Cancelar</button><button className="primary-button" disabled={saving}>{saving ? "Salvando..." : editing ? "Salvar alterações" : "Adicionar lançamento"}</button></div>
+            <div className="modal-actions"><button type="button" className="secondary-button" onClick={() => setModalOpen(false)}>Cancelar</button><button className="primary-button" disabled={saving || categorySaving}>{saving ? "Salvando..." : editing ? "Salvar alterações" : "Adicionar lançamento"}</button></div>
           </form>
         </Modal>
       )}

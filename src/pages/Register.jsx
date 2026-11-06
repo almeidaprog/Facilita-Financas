@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { createUser } from "../services/api";
+import { createCategory, createUser } from "../services/api";
 import StatusMessage from "../components/StatusMessage";
+import { missingDefaultCategories } from "../utils/defaultCategories";
 
 export default function Register({ onRegistered, onGoLogin }) {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
@@ -15,6 +16,11 @@ export default function Register({ onRegistered, onGoLogin }) {
     event.preventDefault();
     setError("");
 
+    if (form.name.trim().length < 2) {
+      setError("Informe um nome com pelo menos 2 caracteres.");
+      return;
+    }
+
     if (form.password.length < 6) {
       setError("A senha precisa ter pelo menos 6 caracteres.");
       return;
@@ -27,7 +33,23 @@ export default function Register({ onRegistered, onGoLogin }) {
 
     setLoading(true);
     try {
-      await createUser({ name: form.name.trim(), email: form.email.trim(), password: form.password });
+      const createdUser = await createUser({ name: form.name.trim(), email: form.email.trim(), password: form.password });
+
+      // Categorias padrão deixam o primeiro lançamento pronto para uso.
+      // Se alguma falhar por rede/servidor, o primeiro acesso tenta completar depois.
+      if (createdUser?.id) {
+        const defaults = missingDefaultCategories([]);
+        await Promise.allSettled(
+          defaults.map((category) =>
+            createCategory({
+              user_id: createdUser.id,
+              name: category.name,
+              category_type: category.category_type,
+            })
+          )
+        );
+      }
+
       onRegistered(form.email.trim());
     } catch (err) {
       setError(err.message);
@@ -60,20 +82,20 @@ export default function Register({ onRegistered, onGoLogin }) {
 
           <label>
             Nome
-            <input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Como podemos te chamar?" required />
+            <input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="Como podemos te chamar?" autoComplete="name" required />
           </label>
           <label>
             E-mail
-            <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="voce@email.com" required />
+            <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} placeholder="voce@email.com" autoComplete="email" required />
           </label>
           <div className="form-grid two">
             <label>
               Senha
-              <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="Mínimo 6 caracteres" required />
+              <input type="password" value={form.password} onChange={(event) => update("password", event.target.value)} placeholder="Mínimo 6 caracteres" autoComplete="new-password" required />
             </label>
             <label>
               Confirmar senha
-              <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} placeholder="Repita a senha" required />
+              <input type="password" value={form.confirmPassword} onChange={(event) => update("confirmPassword", event.target.value)} placeholder="Repita a senha" autoComplete="new-password" required />
             </label>
           </div>
 

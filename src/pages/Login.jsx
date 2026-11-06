@@ -43,6 +43,7 @@ export default function Login({ onLogin, onGoRegister, initialEmail = "" }) {
             <p>Entre para continuar acompanhando suas finanças.</p>
           </div>
 
+          <StatusMessage type="success">{initialEmail ? "Conta criada com sucesso. Agora entre com seu e-mail e senha." : ""}</StatusMessage>
           <StatusMessage>{error}</StatusMessage>
 
           <label>
