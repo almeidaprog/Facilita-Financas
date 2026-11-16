@@ -31,7 +31,11 @@ def validate_category(
     if category.category_type != entry_type:
         raise HTTPException(
             status_code=400,
-            detail="O tipo da categoria não corresponde ao tipo do lançamento.",
+            detail=(
+                f"A categoria '{category.name}' é do tipo '{category.category_type}', "
+                f"mas o lançamento foi enviado como '{entry_type}'. "
+                "Use o mesmo tipo da categoria."
+            ),
         )
 
 

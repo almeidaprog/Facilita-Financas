@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text
+from sqlalchemy import CheckConstraint, Date, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -9,6 +9,16 @@ from app.database import Base
 
 class Entry(Base):
     __tablename__ = "entries"
+    __table_args__ = (
+        CheckConstraint(
+            "entry_type IN ('receita', 'despesa')",
+            name="ck_entries_type",
+        ),
+        CheckConstraint(
+            "amount > 0",
+            name="ck_entries_amount_positive",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
 

@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Facilita Finanças",
+    "slug": "facilita-financas",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "facilitafinancas",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.facilitafinancas.app",
+      "versionCode": 1
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

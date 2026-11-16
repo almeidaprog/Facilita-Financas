@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.financial_types import normalize_financial_type
 from app.models.category import Category
+from app.models.entries import Entry
 from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryResponse, CategoryUpdate
 
@@ -48,12 +50,18 @@ def create_category(
 @router.get("/{user_id}", response_model=list[CategoryResponse])
 def list_categories(
     user_id: int,
-    category_type: str | None = Query(default=None, pattern="^(despesa|receita)$"),
+    category_type: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
     query = db.query(Category).filter(Category.user_id == user_id)
+
     if category_type:
-        query = query.filter(Category.category_type == category_type)
+        try:
+            normalized_type = normalize_financial_type(category_type)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        query = query.filter(Category.category_type == normalized_type)
+
     return query.order_by(Category.name.asc()).all()
 
 
@@ -68,6 +76,20 @@ def update_category(
         raise HTTPException(status_code=404, detail="Categoria não encontrada.")
 
     updates = data.model_dump(exclude_unset=True)
+
+    if "category_type" in updates and updates["category_type"] != category.category_type:
+        has_entries = (
+            db.query(Entry.id)
+            .filter(Entry.category_id == category.id)
+            .first()
+            is not None
+        )
+        if has_entries:
+            raise HTTPException(
+                status_code=400,
+                detail="Não é possível alterar o tipo de uma categoria já utilizada em lançamentos.",
+            )
+
     for field, value in updates.items():
         setattr(category, field, value)
 
